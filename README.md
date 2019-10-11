@@ -3,7 +3,7 @@
 
 ## Dependencies
 * php 5.6+
-* cgi-fcgi console utility
+* `cgi-fcgi` console utility
 * php-fpm status page enabled
 
 ## Installation
