@@ -9,11 +9,8 @@
 ## Installation
 1. Copy the script to /usr/local/bin/
 1. Use chown and chmod to ensure the test user can execute it.
-1. Install fcgi dependency:
-RHEL:`sudo yum install fcgi`
-Debian: `sudo apt install libfcgi-bin`
-1. Enable php-fpm status page:
-`/etc/php-fpm.d/status.conf`:
+1. Install fcgi dependency (RHEL: `sudo yum install fcgi` Debian: `sudo apt install libfcgi-bin`)
+1. Enable php-fpm status page: `/etc/php-fpm.d/status.conf`:
 ```
 [www]
 pm.status_path = /status
