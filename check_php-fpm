@@ -1,0 +1,118 @@
+#!/usr/bin/php
+<?php
+
+/*
+
+talks to php-fpm on specified ip:port (defaults to 127.0.0.1:9000).
+returns health and performance data.
+
+requires fcgi:
+	sudo yum install fcgi
+	sudo apt install libfcgi-bin
+
+requires php-fpm status page enabled. /etc/php-fpm.d/status.conf:
+	[www]
+	pm.status_path = /status
+
+*/
+
+$return_text_extended = "";
+$perfdata = "";
+
+// args
+$connect = "127.0.0.1:9000";
+$shortopts = "h";
+$longopts = array("connect:", "help");
+$options = getopt($shortopts, $longopts);
+$ignore = [];
+if ( isset($options['connect']) ) {
+	$connect = $options['connect'];
+}
+
+if ( isset($options['h']) || isset($options['help']) ) {
+	$me = basename(__FILE__);
+	echo "Usage: $me [--connect <address:port>]\t(defaults to 127.0.0.1:9000)\n";
+	exit(3);
+}
+
+if( ! is_executable("/usr/bin/cgi-fcgi") ) {
+	print("Can't find cgi-fcgi executable. Aborting\n");
+	exit(3);
+}
+
+// run test
+exec("SCRIPT_NAME=/status SCRIPT_FILENAME=/status REQUEST_METHOD=GET QUERY_STRING=json cgi-fcgi -bind -connect $connect 2>&1", $output, $return);
+if ($return != 0) {
+	$outputhead = rtrim(strtok($output[0], "\n")); // first line of original output
+	print("Unknown: cgi-fcgi returned $return. Output was: $outputhead\n");
+	exit(3);
+}
+
+// get json
+foreach($output as $item){
+	json_decode($item);
+	if (json_last_error() === JSON_ERROR_NONE) {
+		$decoded = json_decode($item);
+	}
+}
+
+if (json_last_error() !== JSON_ERROR_NONE) {
+	$outputhead = rtrim(strtok($output[0], "\n")); // first line of original output
+	if($outputhead === "Primary script unknown") {
+		print("php-fpm status page is not enabled. Aborting.\n");
+	} else {
+		print("Unknown: $outputhead\n");
+	}
+	exit(3);
+}
+
+
+// build performance data index
+foreach($decoded as $key => $value) {
+	$newkey = str_replace(" ", "_", $key);
+	$index[$newkey] = $value;
+}
+
+// calculate perfdata percentages
+$index["queue_capacity"] = intval($index['listen_queue']) * 100 / intval($index['listen_queue_len']) . "%";
+$index["process_capacity"] = intval($index['active_processes']) * 100 / intval($index['total_processes']) . "%";
+
+// build performance data string
+foreach ($index as $key => $value) {
+	if(  is_numeric( str_replace('%', '', "$value") )  ) {
+		$perfdata = $perfdata . "$key=$value; ";
+	}
+}
+
+
+// output
+if($index['start_since'] > 0) {
+	$human_date = date('r', $index['start_time']);
+	if(str_replace('%', '', $index['queue_capacity']) >= 80) {
+		$return_status = 1;
+		$return_text = 'WARN: ';
+		$return_text_extended = "queue capacity at " . $index['queue_capacity'] . " (" . $index['listen_queue'] . "/" . $index['listen_queue_len'] . "). Peak since $human_date was " . $index['max_listen_queue'] . "/" . $index['listen_queue_len'] . " | " . $perfdata;
+
+	} elseif(str_replace('%', '', $index['process_capacity']) >= 80) {
+		$return_status = 1;
+		$return_text = 'WARN: ';
+		$return_text_extended = "processes capacity at " . $index['process_capacity'] . " (" . $index['active_processes'] . "/" . $index['total_processes'] . "). Peak since $human_date was " . $index['max_active_processes'] . "/" . $index['total_processes'] . " | " . $perfdata;
+
+	} else {
+
+		$return_status = 0;
+		$return_text = 'OK: ';
+		$return_text_extended = "served " . $index['accepted_conn'] . " connections with " . $index['slow_requests'] . " slow requests since $human_date. | " . $perfdata;
+	}
+} else	{
+	$return_status = 2;
+	$outputhead = rtrim(strtok($output[0], "\n")); // first line of original output
+	$return_text = 'CRITICAL: ' ;
+	if( strlen($outputhead) ) {
+		$return_text_extended = "$outputhead";
+	}
+}
+
+fwrite(STDOUT, $return_text.$return_text_extended.PHP_EOL);
+exit($return_status);
+
