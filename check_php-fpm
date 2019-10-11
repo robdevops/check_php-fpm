@@ -6,7 +6,7 @@
 talks to php-fpm on specified ip:port (defaults to 127.0.0.1:9000).
 returns health and performance data.
 
-requires fcgi:
+requires cgi-fcgi console utility:
 	sudo yum install fcgi
 	sudo apt install libfcgi-bin
 
