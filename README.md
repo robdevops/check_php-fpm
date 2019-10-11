@@ -1,5 +1,5 @@
 # check_php-fpm
-check_php-fpm (PHP FastCGI Process Mananger) plugin for Nagios / Icinga. Returns health and performance data.
+`check_php-fpm` php-fpm (PHP FastCGI Process Mananger) plugin for Nagios / Icinga. Returns health and performance data.
 
 ## Dependencies
 * php 5.6+
