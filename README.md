@@ -18,7 +18,7 @@ pm.status_path = /status
 
 ## Usage
 ```
-Usage: check_php-fpm [--connect <address:port>]	(defaults to 127.0.0.1:9000)
+Usage: check_php-fpm [--connect <address:port|unix socket file>]	(defaults to 127.0.0.1:9000)
 ```
 
 ### Example output
