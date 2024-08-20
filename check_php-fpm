@@ -31,7 +31,7 @@ if ( isset($options['connect']) ) {
 
 if ( isset($options['h']) || isset($options['help']) ) {
 	$me = basename(__FILE__);
-	echo "Usage: $me [--connect <address:port>]\t(defaults to 127.0.0.1:9000)\n";
+	echo "Usage: $me [--connect <address:port|socket file>]\t(defaults to 127.0.0.1:9000)\n";
 	exit(3);
 }
 
@@ -74,8 +74,17 @@ foreach($decoded as $key => $value) {
 }
 
 // calculate perfdata percentages
-$index["queue_capacity"] = intval($index['listen_queue']) * 100 / intval($index['listen_queue_len']) . "%";
-$index["process_capacity"] = intval($index['active_processes']) * 100 / intval($index['total_processes']) . "%";
+if ($index['listen_queue'] != 0) {
+	$index["queue_capacity"] = intval($index['listen_queue']) * 100 / intval($index['listen_queue_len']) . "%";
+} else {
+	$index["queue_capacity"] = 0 . "%";
+}
+
+if ($index['active_processes'] != 0) {
+	$index["process_capacity"] = intval($index['active_processes']) * 100 / intval($index['total_processes']) . "%";
+} else {
+	$index["process_capacity"] = 0 . "%";
+}
 
 // build performance data string
 foreach ($index as $key => $value) {
@@ -87,6 +96,11 @@ foreach ($index as $key => $value) {
 
 // output
 if($index['start_since'] > 0) {
+    if (! ini_get('date.timezone')) {
+		date_default_timezone_set('Australia/Sydney');
+	} else {
+		date_default_timezone_set(ini_get('date.timezone'));
+	}
 	$human_date = date('r', $index['start_time']);
 	if(str_replace('%', '', $index['queue_capacity']) >= 80) {
 		$return_status = 1;
